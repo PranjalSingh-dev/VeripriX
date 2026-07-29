@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from db.database import get_db
 from db.models import Scan
 
@@ -19,6 +20,20 @@ def get_history(db: Session = Depends(get_db)):
         }
         for s in scans
     ]
+
+@router.get("/stats")
+def get_stats(db: Session = Depends(get_db)):
+    total = db.query(Scan).count()
+    ai_scans = db.query(Scan).filter(Scan.verdict.like("%AI%")).count()
+    comparisons = db.query(Scan).filter(Scan.feature_type == "comparison").count()
+    
+    ai_rate = round((ai_scans / total * 100), 1) if total > 0 else 0.0
+    
+    return {
+        "total_scans": total,
+        "ai_detection_rate": ai_rate,
+        "comparisons_run": comparisons
+    }
 
 @router.delete("/{scan_id}")
 def delete_scan(scan_id: int, db: Session = Depends(get_db)):
